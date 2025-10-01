@@ -146,6 +146,13 @@ st.sidebar.header("Color Customization")
 light_square_color = st.sidebar.color_picker("Light Square Color", "#F0D9B5")
 dark_square_color = st.sidebar.color_picker("Dark Square Color", "#B58863")
 
+st.sidebar.subheader("Army Colors")
+default_colors = ['#FF4136', '#0074D9', '#2ECC40', '#FFDC00', '#B10DC9', '#FF851B', '#7FDBFF', '#F012BE']
+army_colors = []
+for i in range(num_armies):
+    color = st.sidebar.color_picker(f"Army {i+1}", default_colors[i % len(default_colors)], key=f"army_color_{i}")
+    army_colors.append(color)
+
 # --- Main Logic & Display ---
 
 col1, col2 = st.columns([1, 2])
