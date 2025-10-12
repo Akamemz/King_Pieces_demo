@@ -6,7 +6,7 @@ import math
 
 # --- Army Placement Logic ---
 
-def get_king_army_placements(n, k):
+def get_king_army_placements(n, k, orientation="Vertical"):
     """
     Calculates the optimal placement and size for k peaceful armies of kings on an n x n board.
     Returns placements, army_size, and a description of the strategy.
@@ -19,7 +19,7 @@ def get_king_army_placements(n, k):
     colors = ['#FF4136', '#0074D9', '#2ECC40', '#FFDC00', '#B10DC9', '#FF851B', '#7FDBFF', '#F012BE']
 
     if k == 1:
-        # Standard independence problem
+        # Standard independence problem - orientation doesn't apply
         strategy = "Standard Independence: Kings are placed on every other square to maximize their number."
         placements[0] = []
         for r in range(0, n, 2):
@@ -28,37 +28,66 @@ def get_king_army_placements(n, k):
         army_size = len(placements[0])
 
     elif k == 2:
-        # Two armies: split the board vertically with one buffer column
-        strategy = "Two Armies (Strips): The board is split vertically, with a one-square buffer column separating the two armies."
-        army_width = (n - 1) // 2
-        if army_width > 0:
-            army_size = n * army_width
-            # Army 1
-            placements[0] = [(r, c) for r in range(n) for c in range(army_width)]
-            # Army 2
-            placements[1] = [(r, c) for r in range(n) for c in range(army_width + 1, n)]
-        else:  # handles small boards where no space is available
-            army_size = 0
+        if orientation == "Vertical":
+            # Two armies: split the board vertically with one buffer column
+            strategy = "Two Armies (Vertical Strips): The board is split vertically, with a one-square buffer column separating the two armies."
+            army_width = (n - 1) // 2
+            if army_width > 0:
+                army_size = n * army_width
+                # Army 1
+                placements[0] = [(r, c) for r in range(n) for c in range(army_width)]
+                # Army 2
+                placements[1] = [(r, c) for r in range(n) for c in range(army_width + 1, n)]
+            else:
+                army_size = 0
+        else: # Horizontal
+            # Two armies: split the board horizontally with one buffer row
+            strategy = "Two Armies (Horizontal Strips): The board is split horizontally, with a one-square buffer row separating the two armies."
+            army_height = (n - 1) // 2
+            if army_height > 0:
+                army_size = n * army_height
+                # Army 1
+                placements[0] = [(r, c) for r in range(army_height) for c in range(n)]
+                # Army 2
+                placements[1] = [(r, c) for r in range(army_height + 1, n) for c in range(n)]
+            else:
+                army_size = 0
 
 
     elif k == 3:
-        # Three armies: split the board vertically with two buffer columns
-        strategy = "Three Armies (Strips): The board is divided into three vertical strips, separated by two buffer columns."
-        army_width = (n - 2) // 3
-        if army_width > 0:
-            army_size = n * army_width
-            # Army 1
-            placements[0] = [(r, c) for r in range(n) for c in range(army_width)]
-            # Army 2
-            placements[1] = [(r, c) for r in range(n) for c in range(army_width + 1, 2 * army_width + 1)]
-            # Army 3
-            placements[2] = [(r, c) for r in range(n) for c in range(2 * army_width + 2, n)]
-        else:
-            army_size = 0
+        if orientation == "Vertical":
+            # Three armies: split the board vertically with two buffer columns
+            strategy = "Three Armies (Vertical Strips): The board is divided into three vertical strips, separated by two buffer columns."
+            army_width = (n - 2) // 3
+            if army_width > 0:
+                army_size = n * army_width
+                # Army 1
+                placements[0] = [(r, c) for r in range(n) for c in range(army_width)]
+                # Army 2
+                placements[1] = [(r, c) for r in range(n) for c in range(army_width + 1, 2 * army_width + 1)]
+                # Army 3
+                placements[2] = [(r, c) for r in range(n) for c in range(2 * army_width + 2, n)]
+            else:
+                army_size = 0
+        else: # Horizontal
+            # Three armies: split the board horizontally with two buffer rows
+            strategy = "Three Armies (Horizontal Strips): The board is divided into three horizontal strips, separated by two buffer rows."
+            army_height = (n - 2) // 3
+            if army_height > 0:
+                army_size = n * army_height
+                # Army 1
+                placements[0] = [(r, c) for r in range(army_height) for c in range(n)]
+                # Army 2
+                placements[1] = [(r, c) for r in range(army_height + 1, 2 * army_height + 1) for c in range(n)]
+                # Army 3
+                placements[2] = [(r, c) for r in range(2 * army_height + 2, n) for c in range(n)]
+            else:
+                army_size = 0
+
 
     elif k == 4:
-        # Four armies: split the board into a 2x2 grid (quadrants)
-        strategy = "Four Armies (Quadrants): The board is divided into a 2x2 grid, with a buffer row and column separating the four armies."
+        # Four armies: split the board into a 2x2 grid - orientation doesn't apply
+        strategy = "Four Armies (Quadrants): The board is divided into a 2x2 grid, with a buffer row and column separating the four armies. This strategy is symmetrical."
         army_dim = (n - 1) // 2
         if army_dim > 0:
             army_size = army_dim * army_dim
@@ -74,18 +103,33 @@ def get_king_army_placements(n, k):
             army_size = 0
 
     elif k > 4:
-        # General case for k > 4: Arrange as k vertical strips
-        strategy = f"{k} Armies (Strips): A general strategy is to arrange the armies in {k} vertical strips, separated by {k - 1} buffer columns."
-        num_buffers = k - 1
-        army_width = (n - num_buffers) // k
-        if army_width > 0:
-            army_size = n * army_width
-            for i in range(k):
-                start_col = i * (army_width + 1)
-                end_col = start_col + army_width
-                placements[i] = [(r, c) for r in range(n) for c in range(start_col, end_col)]
-        else:
-            army_size = 0
+        if orientation == "Vertical":
+            # General case for k > 4: Arrange as k vertical strips
+            strategy = f"{k} Armies (Vertical Strips): A general strategy is to arrange the armies in {k} vertical strips, separated by {k - 1} buffer columns."
+            num_buffers = k - 1
+            army_width = (n - num_buffers) // k
+            if army_width > 0:
+                army_size = n * army_width
+                for i in range(k):
+                    start_col = i * (army_width + 1)
+                    end_col = start_col + army_width
+                    placements[i] = [(r, c) for r in range(n) for c in range(start_col, end_col)]
+            else:
+                army_size = 0
+        else: # Horizontal
+            # General case for k > 4: Arrange as k horizontal strips
+            strategy = f"{k} Armies (Horizontal Strips): A general strategy is to arrange the armies in {k} horizontal strips, separated by {k - 1} buffer rows."
+            num_buffers = k - 1
+            army_height = (n - num_buffers) // k
+            if army_height > 0:
+                army_size = n * army_height
+                for i in range(k):
+                    start_row = i * (army_height + 1)
+                    end_row = start_row + army_height
+                    placements[i] = [(r, c) for r in range(start_row, end_row) for c in range(n)]
+            else:
+                army_size = 0
+
 
     # Assign colors to each army
     for i in range(k):
@@ -142,6 +186,12 @@ st.sidebar.header("Controls")
 board_size = st.sidebar.slider("Select Board Size (n)", min_value=1, max_value=25, value=9)
 num_armies = st.sidebar.slider("Select Number of Armies (k)", min_value=1, max_value=8, value=4)
 
+# Add orientation option, only if applicable
+placement_orientation = "Vertical"
+if num_armies not in [1, 4]:
+    placement_orientation = st.sidebar.radio("Placement Orientation", ('Vertical', 'Horizontal'))
+
+
 st.sidebar.header("Color Customization")
 light_square_color = st.sidebar.color_picker("Light Square Color", "#F0D9B5")
 dark_square_color = st.sidebar.color_picker("Dark Square Color", "#B58863")
@@ -157,7 +207,8 @@ for i in range(num_armies):
 
 col1, col2 = st.columns([1, 2])
 
-armies, army_size, strategy = get_king_army_placements(board_size, num_armies)
+# Pass the selected orientation to the logic function
+armies, army_size, strategy = get_king_army_placements(board_size, num_armies, placement_orientation)
 
 with col1:
     st.header("Results")
@@ -174,4 +225,5 @@ with col2:
             f"The {board_size}x{board_size} board is too small to fit {num_armies} armies with the required buffer zones.")
     fig = draw_board(board_size, armies, light_square_color, dark_square_color)
     st.pyplot(fig)
+
 
