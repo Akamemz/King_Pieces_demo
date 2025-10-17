@@ -667,7 +667,7 @@ with st.expander("📊 Efficiency vs Board Size Plot", expanded=True):
     
     with plot_col1:
         st.subheader("Plot Settings")
-        c_plot = st.slider("Number of armies (c) for plot", min_value=2, max_value=8, value=3, key="c_plot")
+        c_plot = st.slider("Number of armies (c) for plot", min_value=2, max_value=12, value=3, key="c_plot")
         n_min_plot = st.slider("Minimum board size", min_value=3, max_value=30, value=5, key="n_min")
         n_max_plot = st.slider("Maximum board size", min_value=5, max_value=50, value=30, key="n_max")
         
