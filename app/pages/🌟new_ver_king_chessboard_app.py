@@ -1,7 +1,7 @@
 # Peaceful Armies of Kings — Streamlit App (Lattice Removed)
 # Focus on moat-based partitioning strategies and modular arithmetic analysis
 # Run: streamlit run new_ver_king_chessboard_app.py
-
+# c
 import io
 import math
 from dataclasses import dataclass
