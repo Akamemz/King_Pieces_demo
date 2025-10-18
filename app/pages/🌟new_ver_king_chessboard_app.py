@@ -241,6 +241,52 @@ def grid_regions(n: int, c: int, rows: int = None, cols: int = None) -> List[Reg
 
 
 # ==============================
+# Equal army enforcement
+# ==============================
+
+def equalize_armies(placements: Dict[int, List[Coord]], target_size: int = None) -> Tuple[Dict[int, List[Coord]], Dict]:
+    """
+    Ensure all armies have exactly the same number of soldiers.
+    If target_size is None, uses the size of the smallest army.
+    Returns (equalized_placements, statistics_dict)
+    """
+    if not placements:
+        return placements, {}
+    
+    # Find current army sizes
+    army_sizes = {army_id: len(coords) for army_id, coords in placements.items()}
+    min_size = min(army_sizes.values())
+    max_size = max(army_sizes.values())
+    
+    if target_size is None:
+        target_size = min_size
+    
+    # Trim armies to target size
+    equalized = {}
+    removed_counts = {}
+    
+    for army_id, coords in placements.items():
+        if len(coords) > target_size:
+            # Keep only the first target_size soldiers
+            # (could randomize this or use different strategies)
+            equalized[army_id] = coords[:target_size]
+            removed_counts[army_id] = len(coords) - target_size
+        else:
+            equalized[army_id] = coords
+            removed_counts[army_id] = 0
+    
+    stats = {
+        'original_min': min_size,
+        'original_max': max_size,
+        'final_size': target_size,
+        'total_removed': sum(removed_counts.values()),
+        'removed_per_army': removed_counts
+    }
+    
+    return equalized, stats
+
+
+# ==============================
 # Population strategies (fill every square)
 # ==============================
 
@@ -294,7 +340,7 @@ class Layout:
     modular_analysis: Dict
 
 
-def build_layout(n: int, c: int, style: str) -> Layout:
+def build_layout(n: int, c: int, style: str, enforce_equal: bool = False) -> Layout:
     """Build layout with specified partitioning style."""
     if c <= 0 or n <= 0:
         return Layout([], {}, 0, 0, "Invalid input.", {})
@@ -336,17 +382,29 @@ def build_layout(n: int, c: int, style: str) -> Layout:
             coords = fill_every_square(reg)
             placements[i] = coords
 
+    # Equalize armies if requested
+    equalize_stats = None
+    if enforce_equal:
+        placements, equalize_stats = equalize_armies(placements)
+
     per_army = len(next(iter(placements.values()))) if placements else 0
     total = per_army * c
 
     # Perform modular analysis
     mod_analysis = analyze_modular_efficiency(n, c, regions)
+    
+    # Add equalization info to analysis
+    if equalize_stats:
+        mod_analysis['equalization'] = equalize_stats
 
     strategy = (
         f"Arrangement: {style_note} "
         f"Regions separated by 1-cell moats to prevent cross-army attacks. "
         f"Each region is filled completely (every square occupied)."
     )
+    
+    if enforce_equal and equalize_stats:
+        strategy += f" **Equal armies enforced**: All armies trimmed to {equalize_stats['final_size']} soldiers (removed {equalize_stats['total_removed']} total)."
 
     return Layout(regions, placements, per_army, total, strategy, mod_analysis)
 
@@ -466,6 +524,13 @@ style = st.sidebar.selectbox("Choose partition pattern", [
     "Grid (auto)"
 ])
 
+
+enforce_equal_armies = st.sidebar.checkbox(
+    "⚖️ Enforce equal army sizes", 
+    value=False,
+    help="Trim all armies to match the smallest army size"
+)
+
 st.sidebar.subheader("Visualization Options")
 show_regions = st.sidebar.checkbox("Show region outlines", value=True)
 show_moats = st.sidebar.checkbox("Highlight moat areas", value=True)
@@ -481,7 +546,7 @@ army_colors = [st.sidebar.color_picker(f"Army {i+1}", default_colors[i % len(def
                                        key=f"army_color_{i}") for i in range(c)]
 
 # Build layout
-layout = build_layout(n, c, style)
+layout = build_layout(n, c, style, enforce_equal_armies)
 
 # Main display
 col1, col2 = st.columns([1, 2], gap="large")
@@ -490,6 +555,22 @@ with col1:
     st.subheader("Results")
     st.metric("Soldiers per army", layout.per_army)
     st.metric("Total soldiers", layout.total)
+
+    if 'equalization' in layout.modular_analysis:
+        eq_stats = layout.modular_analysis['equalization']
+        if eq_stats['total_removed'] > 0:
+            st.warning(f"⚖️ Equalized: Removed {eq_stats['total_removed']} soldiers total")
+            with st.expander("See equalization details"):
+                st.write(f"**Original army sizes:** {eq_stats['original_min']} to {eq_stats['original_max']}")
+                st.write(f"**Final army size:** {eq_stats['final_size']} (all equal)")
+                
+                removed_df = pd.DataFrame([
+                    {"Army": i+1, "Removed": count} 
+                    for i, count in eq_stats['removed_per_army'].items()
+                    if count > 0
+                ])
+                if not removed_df.empty:
+                    st.dataframe(removed_df, use_container_width=True)
     
     # Modular analysis display
     st.subheader("Modular Arithmetic Analysis")
@@ -540,8 +621,8 @@ with col2:
         strategy1 = st.selectbox("Strategy 1", ["Vertical strips", "Horizontal strips", "Grid (auto)", "Radial (experimental)"], index=0, key="strat1")
         strategy2 = st.selectbox("Strategy 2", ["Vertical strips", "Horizontal strips", "Grid (auto)", "Radial (experimental)"], index=1, key="strat2")
         
-        layout1 = build_layout(n, c, strategy1)
-        layout2 = build_layout(n, c, strategy2)
+        layout1 = build_layout(n, c, strategy1, enforce_equal_armies)
+        layout2 = build_layout(n, c, strategy2, enforce_equal_armies)
         
         with comp_col1:
             st.caption(f"**{strategy1}**")
@@ -638,7 +719,7 @@ with st.expander("Compare Multiple Board Sizes", expanded=False):
     if st.button("Run Analysis"):
         results = []
         for n_test in range(n_start, n_end + 1):
-            layout_test = build_layout(n_test, c_fixed, "Vertical strips")
+            layout_test = build_layout(n_test, c_fixed, "Vertical strips", enforce_equal_armies)
             mod = layout_test.modular_analysis
             results.append({
                 'n': n_test,
@@ -680,7 +761,7 @@ with st.expander("📊 Efficiency vs Board Size Plot", expanded=True):
                 # Collect data
                 plot_data = []
                 for n_test in range(n_min_plot, n_max_plot + 1):
-                    layout_test = build_layout(n_test, c_plot, "Vertical strips")
+                    layout_test = build_layout(n_test, c_plot, "Vertical strips", enforce_equal_armies)
                     mod = layout_test.modular_analysis
                     plot_data.append({
                         'n': n_test,
